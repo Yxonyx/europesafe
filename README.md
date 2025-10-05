@@ -25,7 +25,7 @@
 
 ## 🚀 Live Demo
 
-Experience EuropeSafe in action: [**Launch Application**](https://yourusername.github.io/europesafe)
+Experience EuropeSafe in action: [**Launch Application**](https://yxonyx.github.io/europesafe/)
 
 ---
 
