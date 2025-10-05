@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Europe Tension Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+            color: white;
+            overflow: hidden;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100vw;
+            background: #1e293b;
+        }
+
+        .legend {
+            position: fixed;
+            top: 20px;
+            left: 70px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+
+        .legend h3 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            margin-right: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .legend-label {
+            font-size: 0.9rem;
+            color: #e2e8f0;
+        }
+
+        .discrete-legend {
+            margin-top: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .legend-color {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            margin-right: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .legend-label {
+            font-size: 0.8rem;
+            color: #e2e8f0;
+        }
+
+        .status-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.8rem;
+            opacity: 0.8;
+            z-index: 1000;
+            color: #94a3b8;
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 2000;
+            text-align: center;
+        }
+
+        .loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #60a5fa;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* AI Travel Assistant Chat */
+        .chat-widget {
+            position: fixed;
+            bottom: 50px;
+            right: 20px;
+            z-index: 1001;
+        }
+
+        .chat-toggle {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 16px 24px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .chat-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .chat-window {
+            display: none;
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            width: 380px;
+            height: 500px;
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-window.active {
+            display: flex;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h4 {
+            margin: 0;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .chat-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .chat-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-message {
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-message.bot {
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            color: #e2e8f0;
+            align-self: flex-start;
+        }
+
+        .chat-message.user {
+            background: rgba(52, 211, 153, 0.2);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+            color: #e2e8f0;
+            align-self: flex-end;
+        }
+
+        .chat-input-container {
+            padding: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+
+        .chat-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .chat-send {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .chat-send:hover {
+            transform: scale(1.05);
+        }
+
+        .chat-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .legend {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 15px;
+            }
+
+            .status-panel {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div class="legend">
+        <h3>🗺️ Europe Tension Tracker</h3>
+        <div class="discrete-legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #1a9850;"></div>
+                <div class="legend-label">Very Low</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #66bd63;"></div>
+                <div class="legend-label">Low</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #a6d96a;"></div>
+                <div class="legend-label">Low-Moderate</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #d9ef8b;"></div>
+                <div class="legend-label">Moderate</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ffffbf;"></div>
+                <div class="legend-label">Moderate-High</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #fee08b;"></div>
+                <div class="legend-label">High</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #fdae61;"></div>
+                <div class="legend-label">Elevated</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f46d43;"></div>
+                <div class="legend-label">Severe</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #d73027;"></div>
+                <div class="legend-label">Critical</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #a50026;"></div>
+                <div class="legend-label">Extreme</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-panel">
+        <div id="status">Loading data...</div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div>Loading tension data...</div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            DATA_URL: './data/europe-tension.json',
+            GEOJSON_URL: 'https://raw.githubusercontent.com/leakyMirror/map-of-europe/master/GeoJSON/europe.geojson',
+            UPDATE_INTERVAL: 3600000, // 1 hour
+            RETRY_ATTEMPTS: 3,
+            RETRY_DELAY: 2000
+        };
+
+        // Initialize map with dark theme
+        const map = L.map('map', {
+            center: [54.5, 15.0],
+            zoom: 4,
+            minZoom: 3,
+            maxZoom: 8,
+            zoomControl: true,
+            attributionControl: false
+        });
+
+        // Dark theme tile layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors © CARTO',
+            subdomains: 'abcd'
+        }).addTo(map);
+
+        // Global variables
+        let tensionData = null;
+        let countryLayers = null;
+        let geoJsonData = null;
+
+        // Ultra-smooth continuous color scale function (0-100 score → 30+ color stops)
+        function getTensionColor(score) {
+            // Ensure score is between 0 and 100
+            score = Math.max(0, Math.min(100, score));
+
+            // Standard 10-color scheme used in professional data visualization
+            // Based on ColorBrewer and D3.js sequential scales
+            const colorStops = [
+                { value: 0,   color: [26, 152, 80] },    // Dark green #1a9850
+                { value: 10,  color: [102, 189, 99] },   // Green #66bd63
+                { value: 20,  color: [166, 217, 106] },  // Light green #a6d96a
+                { value: 30,  color: [217, 239, 139] },  // Yellow-green #d9ef8b
+                { value: 40,  color: [255, 255, 191] },  // Light yellow #ffffbf
+                { value: 50,  color: [254, 224, 139] },  // Yellow #fee08b
+                { value: 60,  color: [253, 174, 97] },   // Orange #fdae61
+                { value: 70,  color: [244, 109, 67] },   // Red-orange #f46d43
+                { value: 80,  color: [215, 48, 39] },    // Red #d73027
+                { value: 100, color: [165, 0, 38] }      // Dark red #a50026
+            ];
+
+            // Find the two color stops to interpolate between
+            let lower = colorStops[0];
+            let upper = colorStops[colorStops.length - 1];
+
+            for (let i = 0; i < colorStops.length - 1; i++) {
+                if (score >= colorStops[i].value && score <= colorStops[i + 1].value) {
+                    lower = colorStops[i];
+                    upper = colorStops[i + 1];
+                    break;
+                }
+            }
+
+            // Linear interpolation between the two colors
+            const range = upper.value - lower.value;
+            const ratio = range === 0 ? 0 : (score - lower.value) / range;
+
+            const r = Math.round(lower.color[0] + (upper.color[0] - lower.color[0]) * ratio);
+            const g = Math.round(lower.color[1] + (upper.color[1] - lower.color[1]) * ratio);
+            const b = Math.round(lower.color[2] + (upper.color[2] - lower.color[2]) * ratio);
+
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // Generate legend gradient colors for display
+        function generateLegendGradient() {
+            const steps = [];
+            for (let i = 0; i <= 100; i += 10) {
+                steps.push({
+                    value: i,
+                    color: getTensionColor(i)
+                });
+            }
+            return steps;
+        }
+
+        // Style function for GeoJSON features
+        function getCountryStyle(feature) {
+            const iso3 = getISO3FromFeature(feature);
+            const countryData = tensionData ? tensionData.scores.find(s => s.iso3 === iso3) : null;
+
+            const score = countryData ? countryData.score : 0;
+            const color = getTensionColor(score);
+
+            return {
+                fillColor: color,
+                weight: 1,
+                opacity: 0.7,
+                color: '#475569',
+                fillOpacity: 0.7
+            };
+        }
+
+        // Get readable level text
+        function getLevelText(level) {
+            const levelMap = {
+                'very-low': 'Very Low',
+                'low': 'Low',
+                'low-mod': 'Low-Moderate',
+                'moderate': 'Moderate',
+                'mod-high': 'Moderate-High',
+                'high': 'High',
+                'elevated': 'Elevated',
+                'severe': 'Severe',
+                'critical': 'Critical',
+                'extreme': 'Extreme'
+            };
+            return levelMap[level] || level.charAt(0).toUpperCase() + level.slice(1);
+        }
+
+        // Map country names/codes to ISO3
+        function getISO3FromFeature(feature) {
+            const props = feature.properties;
+
+            // Try different property names that might contain country codes
+            if (props.ISO3) return props.ISO3;
+            if (props.iso_a3) return props.iso_a3;
+            if (props.ADM0_A3) return props.ADM0_A3;
+
+            // Fallback: map by country name
+            const nameMapping = {
+                'Hungary': 'HUN', 'Austria': 'AUT', 'Germany': 'DEU', 'France': 'FRA',
+                'Poland': 'POL', 'Czech Republic': 'CZE', 'Czechia': 'CZE', 'Slovakia': 'SVK',
+                'Slovenia': 'SVN', 'Croatia': 'HRV', 'Italy': 'ITA', 'Spain': 'ESP',
+                'Portugal': 'PRT', 'United Kingdom': 'GBR', 'Ireland': 'IRL',
+                'Belgium': 'BEL', 'Netherlands': 'NLD', 'Switzerland': 'CHE',
+                'Norway': 'NOR', 'Sweden': 'SWE', 'Denmark': 'DNK', 'Finland': 'FIN',
+                'Estonia': 'EST', 'Latvia': 'LVA', 'Lithuania': 'LTU', 'Romania': 'ROU',
+                'Bulgaria': 'BGR', 'Greece': 'GRC', 'Ukraine': 'UKR',
+                'Russia': 'RUS', 'Russian Federation': 'RUS', 'Belarus': 'BLR',
+                'Moldova': 'MDA', 'Republic of Moldova': 'MDA', 'Serbia': 'SRB',
+                'Kosovo': 'XKX', 'Turkey': 'TUR', 'Türkiye': 'TUR',
+                'Bosnia and Herzegovina': 'BIH', 'North Macedonia': 'MKD', 'Macedonia': 'MKD',
+                'The former Yugoslav Republic of Macedonia': 'MKD',
+                'Albania': 'ALB', 'Montenegro': 'MNE', 'Iceland': 'ISL',
+                'Georgia': 'GEO', 'Armenia': 'ARM', 'Azerbaijan': 'AZE',
+                'Monaco': 'MCO', 'Andorra': 'AND', 'Cyprus': 'CYP'
+            };
+
+            return nameMapping[props.NAME] || nameMapping[props.name] || nameMapping[props.ADMIN] || null;
+        }
+
+        // Event handlers for countries
+        function onEachFeature(feature, layer) {
+            const iso3 = getISO3FromFeature(feature);
+            const countryData = tensionData ? tensionData.scores.find(s => s.iso3 === iso3) : null;
+
+            // Debug logging (disable in production)
+            // const countryName = feature.properties.NAME || feature.properties.name || feature.properties.ADMIN || 'Unknown';
+            // console.log('Country:', countryName, '| ISO3:', iso3, '| Has data:', !!countryData);
+
+            // Add tooltip
+            if (countryData) {
+                const colorRgb = getTensionColor(countryData.score);
+                layer.bindTooltip(`
+                    <div style="text-align: center; font-family: system-ui;">
+                        <strong style="font-size: 1rem;">${countryData.country}</strong><br>
+                        <span style="font-size: 1.5rem; font-weight: bold; color: ${colorRgb};">${countryData.score}</span><br>
+                        <span style="font-size: 0.85rem; color: #64748b; text-transform: uppercase;">${countryData.risk || getLevelText(countryData.level)}</span>
+                    </div>
+                `, {
+                    sticky: true,
+                    direction: 'top'
+                });
+            }
+
+            // Hover effects
+            layer.on({
+                mouseover: function(e) {
+                    const layer = e.target;
+                    layer.setStyle({
+                        weight: 3,
+                        color: '#ffffff',
+                        fillOpacity: 0.9
+                    });
+
+                    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                        layer.bringToFront();
+                    }
+                },
+
+                mouseout: function(e) {
+                    if (countryLayers) {
+                        countryLayers.resetStyle(e.target);
+                    }
+                },
+
+                click: function(e) {
+                    if (countryData) {
+                        const colorRgb = getTensionColor(countryData.score);
+                        const popup = L.popup()
+                            .setLatLng(e.latlng)
+                            .setContent(`
+                                <div style="color: #1e293b; font-family: system-ui; min-width: 200px; text-align: center;">
+                                    <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 1.3rem; font-weight: 600;">
+                                        ${countryData.country}
+                                    </h3>
+
+                                    <div style="font-size: 3rem; font-weight: bold; margin: 12px 0; color: ${colorRgb};">
+                                        ${countryData.score}
+                                    </div>
+
+                                    <div style="color: #64748b; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
+                                        ${countryData.risk || getLevelText(countryData.level)}
+                                    </div>
+
+                                    ${countryData.notes ? `
+                                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 0.85rem; text-align: left;">
+                                        ${countryData.notes}
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            `)
+                            .openOn(map);
+                    }
+                }
+            });
+        }
+
+        // Load GeoJSON data
+        async function loadGeoJSON() {
+            try {
+                const response = await fetch(CONFIG.GEOJSON_URL);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                geoJsonData = await response.json();
+                console.log('GeoJSON loaded successfully');
+                return geoJsonData;
+
+            } catch (error) {
+                console.error('Failed to load GeoJSON:', error);
+                throw error;
+            }
+        }
+
+        // Update country colors based on tension data
+        function updateCountryColors() {
+            if (!geoJsonData || !tensionData) return;
+
+            // Remove existing country layer
+            if (countryLayers) {
+                map.removeLayer(countryLayers);
+            }
+
+            // Add countries with updated colors
+            countryLayers = L.geoJSON(geoJsonData, {
+                style: getCountryStyle,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+        }
+
+        // Load tension data
+        async function loadTensionData(attempt = 1) {
+            try {
+                updateStatus('Loading tension data...');
+
+                const response = await fetch(CONFIG.DATA_URL + '?t=' + Date.now());
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+                const data = await response.json();
+
+                // Validate data structure
+                if (!data.scores || !Array.isArray(data.scores)) {
+                    throw new Error('Invalid data format');
+                }
+
+                tensionData = data;
+                updateCountryColors();
+
+                const lastUpdate = new Date(data.updatedAt);
+                updateStatus(`Updated: ${lastUpdate.toLocaleString()}`);
+                hideLoading();
+
+                console.log('Tension data loaded:', data);
+
+            } catch (error) {
+                console.error('Error loading tension data:', error);
+
+                if (attempt < CONFIG.RETRY_ATTEMPTS) {
+                    updateStatus(`Retry ${attempt}/${CONFIG.RETRY_ATTEMPTS}...`);
+                    setTimeout(() => loadTensionData(attempt + 1), CONFIG.RETRY_DELAY);
+                } else {
+                    updateStatus('Failed to load data - using demo data');
+                    loadDemoData();
+                }
+            }
+        }
+
+        // Demo/fallback data
+        function loadDemoData() {
+            tensionData = {
+                updatedAt: new Date().toISOString(),
+                version: '3.0',
+                source: 'Demo Data - Geopolitical Tension',
+                scores: [
+                    {iso3: 'UKR', country: 'Ukraine', score: 98, level: 'critical', risk: 'Extreme'},
+                    {iso3: 'RUS', country: 'Russia', score: 92, level: 'critical', risk: 'Critical'},
+                    {iso3: 'BLR', country: 'Belarus', score: 84, level: 'high', risk: 'Critical'},
+                    {iso3: 'EST', country: 'Estonia', score: 78, level: 'high', risk: 'High'},
+                    {iso3: 'LVA', country: 'Latvia', score: 76, level: 'high', risk: 'High'},
+                    {iso3: 'LTU', country: 'Lithuania', score: 75, level: 'high', risk: 'High'},
+                    {iso3: 'MDA', country: 'Moldova', score: 74, level: 'high', risk: 'Severe'},
+                    {iso3: 'POL', country: 'Poland', score: 65, level: 'elevated', risk: 'High'},
+                    {iso3: 'ROU', country: 'Romania', score: 63, level: 'elevated', risk: 'Moderate-High'},
+                    {iso3: 'SRB', country: 'Serbia', score: 59, level: 'elevated', risk: 'Elevated'},
+                    {iso3: 'NOR', country: 'Norway', score: 56, level: 'elevated', risk: 'Low-Moderate'},
+                    {iso3: 'TUR', country: 'Turkey', score: 47, level: 'moderate', risk: 'Moderate'},
+                    {iso3: 'DEU', country: 'Germany', score: 43, level: 'moderate', risk: 'Moderate'},
+                    {iso3: 'FRA', country: 'France', score: 42, level: 'moderate', risk: 'Moderate'},
+                    {iso3: 'GBR', country: 'United Kingdom', score: 40, level: 'moderate', risk: 'Moderate'},
+                    {iso3: 'FIN', country: 'Finland', score: 38, level: 'moderate', risk: 'Moderate'},
+                    {iso3: 'SWE', country: 'Sweden', score: 37, level: 'moderate', risk: 'Moderate'},
+                    {iso3: 'ITA', country: 'Italy', score: 34, level: 'moderate', risk: 'Moderate'},
+                    {iso3: 'HUN', country: 'Hungary', score: 33, level: 'moderate', risk: 'Moderate'},
+                    {iso3: 'CZE', country: 'Czech Republic', score: 30, level: 'low', risk: 'Moderate'},
+                    {iso3: 'ESP', country: 'Spain', score: 26, level: 'low', risk: 'Low-Moderate'},
+                    {iso3: 'IRL', country: 'Ireland', score: 23, level: 'low', risk: 'Low-Moderate'},
+                    {iso3: 'PRT', country: 'Portugal', score: 22, level: 'low', risk: 'Low'},
+                    {iso3: 'AUT', country: 'Austria', score: 20, level: 'low', risk: 'Low'},
+                    {iso3: 'DNK', country: 'Denmark', score: 18, level: 'low', risk: 'Low'},
+                    {iso3: 'CHE', country: 'Switzerland', score: 14, level: 'low', risk: 'Very Low'},
+                    {iso3: 'ISL', country: 'Iceland', score: 12, level: 'low', risk: 'Very Low'}
+                ]
+            };
+
+            updateCountryColors();
+            updateStatus('Demo data loaded');
+            hideLoading();
+        }
+
+        // UI Updates
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // Auto-refresh
+        function startAutoRefresh() {
+            setInterval(async () => {
+                if (document.hidden) return; // Don't update when tab is not visible
+
+                try {
+                    await loadTensionData();
+                } catch (error) {
+                    console.warn('Auto-refresh failed:', error);
+                }
+            }, CONFIG.UPDATE_INTERVAL);
+        }
+
+        // No need for gradient legend creation with discrete colors
+
+        // Initialize application
+        async function init() {
+            console.log('Europe Tension Tracker initializing...');
+
+            try {
+                // Load GeoJSON first
+                await loadGeoJSON();
+
+                // Then load tension data
+                await loadTensionData();
+
+                // Start auto-refresh
+                startAutoRefresh();
+
+                console.log('Application initialized successfully');
+
+            } catch (error) {
+                console.error('Failed to initialize application:', error);
+                loadDemoData();
+            }
+        }
+
+        // Start the application
+        init();
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && tensionData) {
+                setTimeout(() => loadTensionData(), 1000);
+            }
+        });
+    </script>
+
+    <!-- AI Travel Assistant Chat Widget -->
+    <div class="chat-widget">
+        <div class="chat-window" id="chatWindow">
+            <div class="chat-header">
+                <h4>✈️ Ask AI: Where Should I Travel?</h4>
+                <button class="chat-close" onclick="toggleChat()">×</button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-message bot">
+                    👋 Hi! I'm your AI travel advisor. Ask me about safe destinations in Europe based on the current geopolitical situation!
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Ask me about travel safety..." maxlength="500">
+                <button class="chat-send" id="chatSendBtn">Send</button>
+            </div>
+        </div>
+        <button class="chat-toggle" id="chatToggleBtn">
+            <span>💬</span>
+            <span>Ask AI: Where to Travel?</span>
+        </button>
+    </div>
+
+    <footer style="position: fixed; bottom: 5px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.9); padding: 8px 16px; border-radius: 8px; font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); text-align: center; z-index: 999; backdrop-filter: blur(5px);">
+        <strong>Disclaimer:</strong> The content on this website is processed by AI and may contain inaccuracies. If you find any errors, please report them to <a href="mailto:kaiserjonatan911@gmail.com" style="color: #60a5fa; text-decoration: none;">kaiserjonatan911@gmail.com</a>
+    </footer>
+
+    <script>
+        // Chat Widget Functions - Secure implementation
+        (function() {
+            const chatToggleBtn = document.getElementById('chatToggleBtn');
+            const chatSendBtn = document.getElementById('chatSendBtn');
+            const chatInput = document.getElementById('chatInput');
+            const chatWindow = document.getElementById('chatWindow');
+            const messagesContainer = document.getElementById('chatMessages');
+
+            // Input sanitization
+            function sanitizeInput(input) {
+                const div = document.createElement('div');
+                div.textContent = input;
+                return div.innerHTML.substring(0, 500); // Max 500 chars
+            }
+
+            function toggleChat() {
+                chatWindow.classList.toggle('active');
+            }
+
+            function sendMessage() {
+                const message = chatInput.value.trim();
+
+                if (!message || message.length === 0) return;
+
+                // Sanitize and add user message
+                const sanitized = sanitizeInput(message);
+                addMessage(sanitized, 'user');
+                chatInput.value = '';
+
+                // Disable button during processing
+                chatSendBtn.disabled = true;
+
+                // Simulate AI response (placeholder until API key is added)
+                setTimeout(() => {
+                    const response = "I'm not connected to an AI service yet. Once the API key is configured, I'll be able to help you find the safest travel destinations in Europe based on real-time geopolitical data!";
+                    addMessage(response, 'bot');
+                    chatSendBtn.disabled = false;
+                }, 1000);
+            }
+
+            function addMessage(text, type) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `chat-message ${type}`;
+                messageDiv.textContent = text; // textContent prevents XSS
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            // Event listeners (secure, no inline handlers)
+            chatToggleBtn.addEventListener('click', toggleChat);
+            chatSendBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !chatSendBtn.disabled) {
+                    sendMessage();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

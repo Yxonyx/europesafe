@@ -1,0 +1,58 @@
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node modules (if adding build tools later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs/
+*.log
+
+# API keys and secrets (NEVER commit these!)
+**/api-keys.json
+**/secrets.json
+**/*secret*
+**/*key*.txt
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# MCP server files (future use)
+mcp-server/node_modules/
+mcp-server/.env
+mcp-server/dist/
+
+# Python cache (if using Python server)
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Backup files
+*.bak
+*.backup
+
+# Test files
+test/
+tests/
+*.test.js
